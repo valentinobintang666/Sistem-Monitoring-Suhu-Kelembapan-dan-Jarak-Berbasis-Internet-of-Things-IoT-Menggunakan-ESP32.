@@ -1,0 +1,158 @@
+#include <WiFi.h>
+#include <DHT.h>
+
+// ===============================
+// KONFIGURASI WIFI
+// ===============================
+const char* ssid = "hi";
+const char* password = "12345678";
+
+// ===============================
+// KONFIGURASI SENSOR DHT11
+// ===============================
+#define DHT_PIN 4
+#define DHT_TYPE DHT11
+
+DHT dht(DHT_PIN, DHT_TYPE);
+
+// ===============================
+// KONFIGURASI SENSOR HC-SR04
+// ===============================
+#define TRIG_PIN 5
+#define ECHO_PIN 18
+
+// ===============================
+// SETUP
+// ===============================
+void setup() {
+
+  Serial.begin(115200);
+
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+
+  dht.begin();
+
+  Serial.println();
+  Serial.println("================================");
+  Serial.println(" SISTEM MONITORING IoT ESP32");
+  Serial.println("================================");
+
+  // Menghubungkan ESP32 ke WiFi
+  Serial.print("Menghubungkan WiFi");
+
+  WiFi.begin(ssid, password);
+
+  int percobaan = 0;
+
+  while (WiFi.status() != WL_CONNECTED &&
+         percobaan < 30) {
+
+    delay(500);
+    Serial.print(".");
+    percobaan++;
+  }
+
+  if (WiFi.status() == WL_CONNECTED) {
+
+    Serial.println();
+    Serial.println("WiFi berhasil terhubung!");
+
+    Serial.print("Alamat IP: ");
+    Serial.println(WiFi.localIP());
+
+  } else {
+
+    Serial.println();
+    Serial.println("WiFi gagal terhubung!");
+  }
+}
+
+// ===============================
+// MEMBACA SENSOR ULTRASONIK
+// ===============================
+float bacaJarak() {
+
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+
+  digitalWrite(TRIG_PIN, LOW);
+
+  long durasi = pulseIn(ECHO_PIN, HIGH, 30000);
+
+  if (durasi == 0) {
+    return -1;
+  }
+
+  float jarak = durasi * 0.0343 / 2;
+
+  return jarak;
+}
+
+// ===============================
+// LOOP UTAMA
+// ===============================
+void loop() {
+
+  // Membaca sensor DHT11
+  float suhu = dht.readTemperature();
+  float kelembapan = dht.readHumidity();
+
+  // Membaca sensor HC-SR04
+  float jarak = bacaJarak();
+
+  Serial.println();
+  Serial.println("======= DATA SENSOR IoT =======");
+
+  // Menampilkan suhu
+  if (!isnan(suhu)) {
+
+    Serial.print("Suhu        : ");
+    Serial.print(suhu);
+    Serial.println(" C");
+
+  } else {
+
+    Serial.println("Suhu        : Gagal membaca");
+  }
+
+  // Menampilkan kelembapan
+  if (!isnan(kelembapan)) {
+
+    Serial.print("Kelembapan  : ");
+    Serial.print(kelembapan);
+    Serial.println(" %");
+
+  } else {
+
+    Serial.println("Kelembapan  : Gagal membaca");
+  }
+
+  // Menampilkan jarak
+  if (jarak >= 0) {
+
+    Serial.print("Jarak       : ");
+    Serial.print(jarak);
+    Serial.println(" cm");
+
+  } else {
+
+    Serial.println("Jarak       : Tidak terdeteksi");
+  }
+
+  // Status WiFi
+  Serial.print("Status WiFi : ");
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("Terhubung");
+  } else {
+    Serial.println("Terputus");
+  }
+
+  Serial.println("===============================");
+
+  delay(2000);
+}
